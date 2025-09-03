@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split, learning_curve, ShuffleSplit
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression  # 修改点1：导入线性回归类
+from sklearn.linear_model import LinearRegression  
 import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
