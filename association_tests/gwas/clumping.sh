@@ -1,3 +1,4 @@
+#!/bin/bash
 bfile_path="/mnt/project/merged_data"
 clump_input="/opt/notebooks/tg/gwas.txt"
 
