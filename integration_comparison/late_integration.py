@@ -114,7 +114,7 @@ def result_output(pheno_symbol,rv_type):
     cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
     plot_learning_curve(linear_pipeline, "Linear Regression Learning Curve", 
                        X_train, y_train, cv=cv, ylim=(0.0, 1.01))
-    plt.savefig('/data/med-hudh/format_output/learning/linear_learning_curve_'+pheno_symbol+'_'+rv_type+'.png') 
+    plt.savefig('./learning/linear_learning_curve_'+pheno_symbol+'_'+rv_type+'.png') 
     plt.close()
 
     # Model training
