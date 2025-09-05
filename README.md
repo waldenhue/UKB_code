@@ -83,11 +83,6 @@ D) Late Integration (CV + RV)
 
     python integration_comparison/late_integration.py
 
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
 E) Variant-set Model Comparison
 
   Compare common variants (CV) vs rare variants (RV) using:
@@ -98,5 +93,11 @@ E) Variant-set Model Comparison
       python variant_comparison/lasso_aa_rv.py
 
   Similarly there are python scripts for Ridge, OLS, Random Forest and XGBoost
+  
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+
 
 
