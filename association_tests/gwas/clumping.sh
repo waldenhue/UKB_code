@@ -1,6 +1,8 @@
 #!/bin/bash
 
 ## taking triglycerides as an example
+## The clump_input has been filtered to only include variants with p-value < 1.96e-8
+
 bfile_path="/mnt/project/merged_data"
 clump_input="/opt/notebooks/tg/gwas.txt"
 
