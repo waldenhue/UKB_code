@@ -3,6 +3,7 @@
 # Define the path to helper files
 path_to_500kwes_helper_files="/mnt/project/Bulk/Exome sequences/Population level exome OQFE variants, PLINK format - final release/helper_files/"
 
+## taking triglycerides as an example
 # Loop over chromosomes 1 to 22
 for i in {1..22}; do
     ./regenie_v2.2.4.gz_x86_64_Linux_mkl \
