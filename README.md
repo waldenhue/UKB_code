@@ -4,14 +4,15 @@ This repo consists of scripts to:
 - extract common/rare genotype matrices from UKB VCF/pVCF,
 - extract phenotypes,
 - run GWAS and burden tests,
-- compare predictive models across variant sets (CV vs RV),
 - try late integration of CV+RV signals,
+- compare predictive models across variant sets (CV vs RV),
 
 ## Repository Structure 
 ```text
 UKB_code/
 ├─ LICENSE
 ├─ README.md
+├─ requirements.txt
 ├─ association_tests/
 │ ├─ burden/
 │ │ ├─ burden.sh
