@@ -11,8 +11,8 @@ for i in {1..22}; do
     --bgen "/mnt/project/Bulk/Exome sequences/Population level exome OQFE variants, BGEN format - final release/ukb23159_c${i}_b0_v1.bgen" \
     --ref-first \
     --sample "/mnt/project/Bulk/Exome sequences/Population level exome OQFE variants, BGEN format - final release/ukb23159_c${i}_b0_v1.sample" \
-    --phenoFile colon_train0.phe \
-    --covarFile colon_train0.phe \
+    --phenoFile tg_train0.phe \
+    --covarFile tg_train0.phe \
     --phenoCol triglycerides \
     --covarColList age,sex,pc{1:10} \
     --set-list "${path_to_500kwes_helper_files}/ukb23158_500k_OQFE.sets.txt.gz" \
@@ -22,6 +22,6 @@ for i in {1..22}; do
     --aaf-bins 0.01 \
     --bsize 200 \
     --qt \
-    --out colon_burden_train0_chr${i}
+    --out tg_burden_train0_chr${i}
 done
 
