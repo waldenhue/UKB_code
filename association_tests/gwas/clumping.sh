@@ -1,4 +1,6 @@
 #!/bin/bash
+
+## taking triglycerides as an example
 bfile_path="/mnt/project/merged_data"
 clump_input="/opt/notebooks/tg/gwas.txt"
 

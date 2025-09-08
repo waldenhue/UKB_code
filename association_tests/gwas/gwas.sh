@@ -12,20 +12,21 @@ SNPLIST="/mnt/project/qc_for_array/all_filtered.snplist"
 OUT_PREFIX="gwas"
 
 # Run REGENIE Step 2
+# Taking triglycerides as an example
 $REGENIE --step 2 \
     --bed $BED_FILE \
     --phenoFile $PHENO_FILE \
     --bsize 200 \
     --pThresh 0.01 \
     --firth --approx \
-	--bt \
+	--qt \
     --test additive \
     --pred $PRED_FILE \
     --gz \
     --extract $SNPLIST \
     --covarFile $PHENO_FILE \
     --minMAC 3 \
-    --phenoColList asthma \
+    --phenoColList triglycerides \
     --covarColList sex,age,pc1,pc2,pc3,pc4,pc5,pc6,pc7,pc8,pc9,pc10 \
     --htp $OUT_PREFIX \
     --out $OUT_PREFIX
