@@ -8,14 +8,20 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-def read_info(pheno_symbol, pheno_name, rv_type):
-    file_path = '/data/med-hudh/taiyiv2/'+pheno_symbol+'/'
+# We take apolipoprotein A as an example here
+
+def read_info(pheno_symbol, pheno_name):
+    "this function reads phenotype and genotype data from samples and returns train and test data"
+    ## reading information of phenotpye and genotype from common and rare variants
+    file_path = './'+pheno_symbol+'/'
     df_pheno = pd.read_parquet(file_path+'pheno.parquet',engine='pyarrow')
     df_cv = pd.read_parquet(file_path+'cv.parquet',engine='pyarrow')
     df_rv = pd.read_parquet(file_path+'rv.parquet',engine='pyarrow')
+    ## standardize the index of cv dataframe
     cv_index = [i.split('_')[0] for i in df_cv.index.tolist()]
     df_cv.index = cv_index
     
+    ## reading train and test ids both having pheno, cv and rv info
     with open(file_path+'test_id.txt','r') as file:
         test_ids = [line.strip() for line in file]
     with open(file_path+'train1_id.txt','r') as file:
@@ -23,11 +29,12 @@ def read_info(pheno_symbol, pheno_name, rv_type):
     train_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(train_ids))
     test_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(test_ids))
     
-
+    ## reading rare variant carriers in test set
     with open(file_path+'rv_carriers.txt','r') as file:
         rv_carriers_ids = [line.strip() for line in file]
     rv_carriers_test = list(set(rv_carriers_ids)&set(test_ids))
     
+    ## making train and test dataframes
     df_pheno_train = df_pheno[df_pheno.index.isin(train_ids)]
     df_cv_train = df_cv[df_cv.index.isin(train_ids)]
     df_rv_train = df_rv[df_rv.index.isin(train_ids)]
@@ -40,55 +47,27 @@ def read_info(pheno_symbol, pheno_name, rv_type):
     df_rv_train = df_rv_train
     df_rv_test = df_rv_test
     rv_carriers_test = rv_carriers_test
+
     df_train_final  = pd.concat([df_pheno_train[pheno_name],df_cv_train,df_rv_train],axis=1)
     df_test_final  = pd.concat([df_pheno_test[pheno_name],df_cv_test,df_rv_test],axis=1)
     df_test_carriers_final = df_test_final[df_test_final.index.isin(rv_carriers_test)]
-    feature_names = df_train_final.drop(pheno_name, axis=1).columns.tolist()    
+
+    feature_names = df_train_final.drop(pheno_name, axis=1).columns.tolist()
+
     X_train = df_train_final.drop(pheno_name,axis=1).values
     y_train = df_train_final[pheno_name].values
     X_test = df_test_final.drop(pheno_name,axis=1).values
     y_test = df_test_final[pheno_name].values
     X_carriers_test = df_test_carriers_final.drop(pheno_name,axis=1).values
     y_carriers_test = df_test_carriers_final[pheno_name].values
+
     return [X_train,X_test,X_carriers_test], [y_train,y_test,y_carriers_test], feature_names
-
-def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
-                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
-
-    plt.figure(figsize=(10, 6))
-    plt.title(title)
-    plt.xlabel("Training examples")
-    plt.ylabel("Score")
-
-    train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes,
-        scoring='r2')
-    
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    
-    plt.grid()
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1,
-                     color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
-    plt.legend(loc="best")
-    return plt
-
 
 # ===================== main =====================
 if __name__ == "__main__":
     X_list, y_list, feature_names = read_info(pheno_symbol='aa', pheno_name='aa', rv_type='rv')
-    X_train, X_test, X_test_m1 = X_list
-    y_train, y_test, y_test_m1 = y_list
+    X_train, X_test, X_test_rv = X_list
+    y_train, y_test, y_test_rv = y_list
     
     extended_alphas = np.logspace(-5, 1, 20)  
     
@@ -98,38 +77,32 @@ if __name__ == "__main__":
         ("lasso", LassoCV(alphas=extended_alphas, cv=5, max_iter=10000))  
     ])
 
-    # learning_curve
-    cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
-    plot_learning_curve(lasso_pipeline, "Lasso Learning Curve", 
-                       X_train, y_train, cv=cv, ylim=(0.0, 1.01))
-    plt.savefig('/data/med-hudh/learning/lasso_learning_curve_aa_rv.png')
-    plt.close()
-
     # model training
     lasso_pipeline.fit(X_train, y_train)
     
     # best parameter and model
     best_alpha = lasso_pipeline.named_steps["lasso"].alpha_
     best_model = lasso_pipeline.named_steps["lasso"]
-    
-    # non-zero features
-    nonzero_features = np.sum(best_model.coef_ != 0)
-    selected_features = [feature_names[i] for i in np.where(best_model.coef_ != 0)[0]]
-    
+        
     # model estimation
-    y_pred = lasso_pipeline.predict(X_test)
-    test_score = r2_score(y_test, y_pred)
-    mse0 = mean_squared_error(y_test,y_pred)
-    y_pred_carriers = lasso_pipeline.predict(X_test_m1)
-    test_score_carriers = r2_score(y_test_m1, y_pred_carriers)
-    mse1 = mean_squared_error(y_test_m1, y_pred_carriers)
+    def estimate_model(model, X, y):
+        y_pred = model.predict(X)
+        return {
+            "r2": r2_score(y, y_pred),
+            "mse": mean_squared_error(y, y_pred)
+        }
+    
+    all_metrics = estimate_model(lasso_pipeline, X_test, y_test)
+    carriers_metrics = estimate_model(lasso_pipeline, X_test_rv, y_test_rv)
 
-    list1 = ['AA','lasso','cv+rv','all',test_score,mse0]
-    list2 = ['AA','lasso','cv+rv','carriers',test_score_carriers,mse1]
-    df_report = pd.DataFrame([list1,list2],columns= ['Trait','Model','Variant','Group','R2','MSE'])
+    list1 = ['AA','lasso','cv+rv','all',all_metrics['r2'],all_metrics['mse']]
+    list2 = ['AA','lasso','cv+rv','carriers',carriers_metrics['r2'],carriers_metrics['mse']]
     list3 = ['AA','lasso','cv+rv',best_alpha]
+
+    # output results
+    df_report = pd.DataFrame([list1,list2],columns= ['Trait','Model','Variant','Group','R2','MSE'])
     df_para = pd.DataFrame([list3],columns= ['Trait','Model','Variant','Best'])
-    df_report.to_csv('/data/med-hudh/report/lasso_aa_rv.csv')
-    df_para.to_csv('/data/med-hudh/para/lasso_aa_rv.csv')
+    df_report.to_csv('./report/lasso_aa_rv.csv')
+    df_para.to_csv('./para/lasso_aa_rv.csv')
 
 

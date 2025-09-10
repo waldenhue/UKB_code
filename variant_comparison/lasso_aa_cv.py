@@ -8,14 +8,20 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+# We take apolipoprotein A as an example here
+
 def read_info(pheno_symbol, pheno_name):
-    file_path = '/data/med-hudh/taiyiv2/'+pheno_symbol+'/'
+    "this function reads phenotype and genotype data from samples and returns train and test data"
+    ## reading information of phenotpye and genotype from common and rare variants
+    file_path = './'+pheno_symbol+'/'
     df_pheno = pd.read_parquet(file_path+'pheno.parquet',engine='pyarrow')
     df_cv = pd.read_parquet(file_path+'cv.parquet',engine='pyarrow')
     df_rv = pd.read_parquet(file_path+'rv.parquet',engine='pyarrow')
+    ## standardize the index of cv dataframe
     cv_index = [i.split('_')[0] for i in df_cv.index.tolist()]
     df_cv.index = cv_index
     
+    ## reading train and test ids both having pheno and cv info
     with open(file_path+'test_id.txt','r') as file:
         test_ids = [line.strip() for line in file]
     with open(file_path+'train1_id.txt','r') as file:
@@ -23,11 +29,12 @@ def read_info(pheno_symbol, pheno_name):
     train_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(train_ids))
     test_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(test_ids))
     
-
+    ## reading rare variant carriers in test set
     with open(file_path+'rv_carriers.txt','r') as file:
         rv_carriers_ids = [line.strip() for line in file]
     rv_carriers_test = list(set(rv_carriers_ids)&set(test_ids))
     
+    ## making train and test dataframes
     df_pheno_train = df_pheno[df_pheno.index.isin(train_ids)]
     df_cv_train = df_cv[df_cv.index.isin(train_ids)]
     
@@ -47,40 +54,9 @@ def read_info(pheno_symbol, pheno_name):
     y_test = df_test_final[pheno_name].values
 
     X_test_rv = df_test_rv_final.drop(pheno_name, axis=1)
-    y_test_rv = df_test_rv_final[pheno_name].values    
+    y_test_rv = df_test_rv_final[pheno_name].values
+
     return (X_train, X_test, X_test_rv), (y_train, y_test, y_test_rv), feature_names
-
-def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
-                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
-    
-
-    plt.figure(figsize=(10, 6))
-    plt.title(title)
-    plt.xlabel("Training examples")
-    plt.ylabel("Score")
-
-    train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes,
-        scoring='r2')
-    
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    
-    plt.grid()
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1,
-                     color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
-    plt.legend(loc="best")
-    return plt
 
 # ===================== main =====================
 if __name__ == "__main__":
@@ -88,8 +64,7 @@ if __name__ == "__main__":
     X_list, y_list, feature_names = read_info(pheno_symbol='aa', pheno_name='aa')
     X_train, X_test, X_test_rv = X_list
     y_train, y_test, y_test_rv= y_list
-    
-    
+       
     extended_alphas = np.logspace(-5, 1, 20)  
     
     # Pipeline
@@ -97,42 +72,34 @@ if __name__ == "__main__":
         ("scaler", StandardScaler()),
         ("lasso", LassoCV(alphas=extended_alphas, cv=5, max_iter=10000))  
     ])
-
-   
-    cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
-    plot_learning_curve(lasso_pipeline, "Lasso Learning Curve", 
-                       X_train, y_train, cv=cv, ylim=(0.0, 1.01))
-    plt.savefig('/data/med-hudh/learning/lasso_learning_curve_aa_cv.png')
-    plt.close()
-
+  
     # model training
     lasso_pipeline.fit(X_train, y_train)
-    
-    
+        
     # best parameter and model
     best_alpha = lasso_pipeline.named_steps["lasso"].alpha_
     best_model = lasso_pipeline.named_steps["lasso"]
-    
-    # non-zero features
-    nonzero_features = np.sum(best_model.coef_ != 0)
-    selected_features = [feature_names[i] for i in np.where(best_model.coef_ != 0)[0]]
-    
+       
     # model estimation
-    y_pred = lasso_pipeline.predict(X_test)
-    test_score = r2_score(y_test, y_pred)
+    def estimate_model(model, X, y):
+        y_pred = model.predict(X)
+        return {
+            "r2": r2_score(y, y_pred),
+            "mse": mean_squared_error(y, y_pred)
+        }
+    
+    all_metrics = estimate_model(lasso_pipeline, X_test, y_test)
+    carriers_metrics = estimate_model(lasso_pipeline, X_test_rv, y_test_rv)
 
-    mse0 = mean_squared_error(y_test,y_pred)
-    y_pred_carriers2 = lasso_pipeline.predict(X_test_rv)
-    test_score_carriers2 = r2_score(y_test_rv, y_pred_carriers2)
-   
-    mse1 = mean_squared_error(y_test_rv, y_pred_carriers2)
-    list1 = ['AA','lasso','cv','all',test_score,mse0]
-    list2 = ['AA','lasso','cv','carriers',test_score_carriers2,mse1]
-    df_report = pd.DataFrame([list1,list2],columns= ['Trait','Model','Variant','Group','R2','MSE'])
+    list1 = ['AA','lasso','cv','all',all_metrics['r2'],all_metrics['mse']]
+    list2 = ['AA','lasso','cv','carriers',carriers_metrics['r2'],carriers_metrics['mse']]
     list3 = ['AA','lasso','cv',best_alpha]
+
+    ## output results
+    df_report = pd.DataFrame([list1,list2],columns= ['Trait','Model','Variant','Group','R2','MSE'])
     df_para = pd.DataFrame([list3],columns= ['Trait','Model','Variant','Best'])
-    df_report.to_csv('/data/med-hudh/report/lasso_aa_cv.csv')
-    df_para.to_csv('/data/med-hudh/para/lasso_aal_cv.csv')
+    df_report.to_csv('./report/lasso_aa_cv.csv')
+    df_para.to_csv('./para/lasso_aal_cv.csv')
 
     
 

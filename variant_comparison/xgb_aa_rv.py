@@ -8,14 +8,20 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.model_selection import learning_curve
 from scipy.stats import uniform, randint
 
-def read_info(pheno_symbol, pheno_name,rv_type):
+## We take apolipoprotein A as an example here 
+
+def read_info(pheno_symbol, pheno_name):
+    "this function reads phenotype and genotype data from samples and returns train and test data"
+    ## reading information of phenotpye and genotype from common and rare variants
     file_path = '/data/med-hudh/taiyiv2/'+pheno_symbol+'/'
     df_pheno = pd.read_parquet(file_path+'pheno.parquet',engine='pyarrow')
     df_cv = pd.read_parquet(file_path+'cv.parquet',engine='pyarrow')
     df_rv = pd.read_parquet(file_path+'rv.parquet',engine='pyarrow')
+    ## standardize the index of cv dataframe
     cv_index = [i.split('_')[0] for i in df_cv.index.tolist()]
     df_cv.index = cv_index
     
+    ## reading train and test ids both having pheno, cv and rv info   
     with open(file_path+'test_id.txt','r') as file:
         test_ids = [line.strip() for line in file]
     with open(file_path+'train1_id.txt','r') as file:
@@ -23,6 +29,7 @@ def read_info(pheno_symbol, pheno_name,rv_type):
     train_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(train_ids))
     test_ids = list(set(df_pheno.index.tolist())&set(df_cv.index.tolist())&set(df_rv.index.tolist())&set(test_ids))
 
+    ## reading rare variant carriers in test set
     with open(file_path+'rv_carriers.txt','r') as file:
         rv_carriers_ids = [line.strip() for line in file]
     rv_carriers_test = list(set(rv_carriers_ids)&set(test_ids))
@@ -35,9 +42,9 @@ def read_info(pheno_symbol, pheno_name,rv_type):
     df_cv_test = df_cv[df_cv.index.isin(test_ids)]
     df_rv_test = df_rv[df_rv.index.isin(test_ids)]
 
-
     df_rv_train = df_rv_train
     df_rv_test = df_rv_test
+  
     rv_carriers_test = rv_carriers_test
     df_train_final = pd.concat([df_pheno_train[pheno_name], df_cv_train, df_rv_train], axis=1)
     df_test_final = pd.concat([df_pheno_test[pheno_name], df_cv_test, df_rv_test], axis=1)
@@ -54,97 +61,63 @@ def read_info(pheno_symbol, pheno_name,rv_type):
     
     return (X_train, X_test, X_test_m1), (y_train, y_test, y_test_m1), feature_names
 
-(X_train, X_test, X_test_m1), (y_train, y_test, y_test_m1), feature_names = read_info(
-    pheno_symbol='aa', pheno_name='aa', rv_type='rv'
-)
-
-
-xgb_model = xgb.XGBRegressor(
-    objective='reg:squarederror',
-    tree_method='hist',  
-    n_jobs=-1,
-    random_state=42
-)
-
-param_grid = {
-    'n_estimators': [500, 800, 1000],
-    'max_depth': [4, 5, 6],
-    'learning_rate': [0.05, 0.1, 0.15],
-    'subsample': [0.7, 0.8, 0.9],
-    'colsample_bytree': [0.7, 0.8, 0.9],
-    'gamma': [0, 0.1, 0.2],
-    'reg_alpha': [0, 0.1, 0.5],
-    'reg_lambda': [0.5, 1, 1.5]
-}
-
-grid_search = GridSearchCV(
-    estimator=xgb_model,
-    param_grid=param_grid,
-    scoring='neg_mean_squared_error',
-    cv=3,
-    verbose=2,
-    n_jobs=-1
-)
-
-grid_search.fit(X_train, y_train)
-best_model = grid_search.best_estimator_
-
-def evaluate_model(model, X, y, dataset_name):
-    y_pred = model.predict(X)
-    r2 = r2_score(y, y_pred)
-    mse = mean_squared_error(y, y_pred)
-    print(f"{dataset_name}评估结果:")
-    print(f"R²: {r2:.4f}")
-    print(f"MSE: {mse:.4f}\n")
-    return r2, mse
-
-_ = evaluate_model(best_model, X_train, y_train, "training set")
-test_r2, test_mse = evaluate_model(best_model, X_test, y_test, "testing set")
-carriers_r2, carriers_mse = evaluate_model(best_model, X_test_m1, y_test_m1, "carriers set")
-
-## learning_curve
-def plot_learning_curve(estimator, title, X, y, cv=None, ylim=None):
-    plt.figure(figsize=(10, 6))
-    plt.title(title)
-    if ylim is not None:
-        plt.ylim(*ylim)
-    plt.xlabel("Training examples")
-    plt.ylabel("r² score")
+# ===================== main =====================
+if __name__ == "__main__":
     
-    train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X, y, cv=cv, scoring='r2',
-        train_sizes=np.linspace(.1, 1.0, 5), n_jobs=-1)
-    
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    
-    plt.grid()
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1,
-                     color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Score in training set")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Score in validation set")
-    plt.legend(loc="best")
-    plt.savefig('/data/med-hudh/learning/xgb_aa_rv_learning_curve.png')
-    plt.close()
+    X_list, y_list, feature_names = read_info(pheno_symbol='aa', pheno_name='aa')
+    X_train, X_test, X_test_rv = X_list
+    y_train, y_test, y_test_rv = y_list
 
-cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
-plot_learning_curve(best_model, "XGBoost Learning Curve", X_train, y_train, cv=cv)
+    xgb_model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        tree_method='hist',  
+        n_jobs=-1,
+        random_state=42
+    )
 
-list1 = ['AA','xgb','cv+rv','all',test_r2,test_mse]
-list2 = ['AA','xgb','cv+rv','carriers',carriers_r2,carriers_mse]
-df_report = pd.DataFrame([list1,list2],columns=['Trait','Model','Variant','Group','R2','MSE'])
-list3  = ['AA','xgb','cv+rv',grid_search.best_params_]
-df_para = pd.DataFrame([list3],columns= ['Trait','Model','Variant','Best'])
-df_report.to_csv('/data/med-hudh/report/xgb_aa_rv.csv')
-df_para.to_csv('/data/med-hudh/para/xgb_aa_rv.csv')
+    param_grid = {
+        'n_estimators': [500, 800, 1000],
+        'max_depth': [4, 5, 6],
+        'learning_rate': [0.05, 0.1, 0.15],
+        'subsample': [0.7, 0.8, 0.9],
+        'colsample_bytree': [0.7, 0.8, 0.9],
+        'gamma': [0, 0.1, 0.2],
+        'reg_alpha': [0, 0.1, 0.5],
+        'reg_lambda': [0.5, 1, 1.5]
+    }
+
+    grid_search = GridSearchCV(
+        estimator=xgb_model,
+        param_grid=param_grid,
+        scoring='neg_mean_squared_error',
+        cv=3,
+        verbose=2,
+        n_jobs=-1
+    )
+
+    grid_search.fit(X_train, y_train)
+    best_model = grid_search.best_estimator_
+
+   # model estimation
+    def evaluate(model, X, y):
+        pred = model.predict(X)
+        return {
+            'r2': r2_score(y, pred),
+            'mse': mean_squared_error(y, pred)
+        }
+    
+    all_metrics = evaluate(best_model, X_test, y_test)
+    carriers_metrics = evaluate(best_model, X_test_rv, y_test_rv)
+
+    list1 = ['AA','xgb','cv+rv','all',all_metrics['r2'],all_metrics['mse']]
+    list2 = ['AA','xgb','cv+rv','carriers',carriers_metrics['r2'],carriers_metrics['mse']]
+    list3  = ['AA','xgb','cv+rv',grid_search.best_params_]
+    df_report = pd.DataFrame([list1,list2],columns=['Trait','Model','Variant','Group','R2','MSE'])
+    df_para = pd.DataFrame([list3],columns= ['Trait','Model','Variant','Best'])
+
+    ## output results
+    df_report.to_csv('/data/med-hudh/report/xgb_aa_rv.csv')
+    df_para.to_csv('/data/med-hudh/para/xgb_aa_rv.csv')
 
 
 

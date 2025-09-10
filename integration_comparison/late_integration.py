@@ -63,37 +63,6 @@ def read_info(pheno_symbol,rv_type):
     
     return [X_train,X_test], [y_train,y_test],feature_names
 
-def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
-                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
-    plt.figure(figsize=(10, 6))
-    plt.title(title)
-    plt.xlabel("Training examples")
-    plt.ylabel("Score")
-
-    train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes,
-        scoring='r2')
-    
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    
-    plt.grid()
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1,
-                     color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
-    
-    plt.legend(loc="best")
-    return plt
-
 # ===================== main =====================
 def result_output(pheno_symbol,rv_type):
     X_list, y_list, feature_names = read_info(pheno_symbol, rv_type)
@@ -108,13 +77,6 @@ def result_output(pheno_symbol,rv_type):
         ("scaler", StandardScaler()),
         ("linear", LinearRegression())
     ])
-
-    # Learning curve
-    cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
-    plot_learning_curve(linear_pipeline, "Linear Regression Learning Curve", 
-                       X_train, y_train, cv=cv, ylim=(0.0, 1.01))
-    plt.savefig('./learning/linear_learning_curve_'+pheno_symbol+'_'+rv_type+'.png') 
-    plt.close()
 
     # Model training
     linear_pipeline.fit(X_train, y_train)

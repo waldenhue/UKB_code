@@ -86,8 +86,8 @@ def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
 # ===================== main =====================
 if __name__ == "__main__":
     X_list, y_list, feature_names = read_info(pheno_symbol='aa', pheno_name='aa', rv_type='rv')
-    X_train, X_test, X_test_special = X_list
-    y_train, y_test, y_test_special = y_list
+    X_train, X_test, X_test_rv = X_list
+    y_train, y_test, y_test_rv = y_list
     
     param_grid = {
         'n_estimators': [100, 200, 300],
@@ -133,13 +133,15 @@ if __name__ == "__main__":
             'mse': mean_squared_error(y, pred)
         }
     
-    test_metrics = evaluate(best_model, X_test, y_test)
-    special_metrics = evaluate(best_model, X_test_special, y_test_special)
+    all_metrics = evaluate(best_model, X_test, y_test)
+    carriers_metrics = evaluate(best_model, X_test_rv, y_test_rv)
 
-    list1 = ['AA','rf','cv+rv','all',test_metrics['r2'],test_metrics['mse']]
-    list2 = ['AA','rf','cv+rv','carriers',special_metrics['r2'],special_metrics['mse']]
-    df_report = pd.DataFrame([list1,list2],columns=['Trait','Model','Variant','Group','R2','MSE'])
+    list1 = ['AA','rf','cv+rv','all',all_metrics['r2'],all_metrics['mse']]
+    list2 = ['AA','rf','cv+rv','carriers',carriers_metrics['r2'],carriers_metrics['mse']]
     list3  = ['AA','rf','cv+rv',grid_search.best_params_]
+
+    # output results
+    df_report = pd.DataFrame([list1,list2],columns=['Trait','Model','Variant','Group','R2','MSE'])
     df_para = pd.DataFrame([list3],columns= ['Trait','Model','Variant','Best'])
     df_report.to_csv('/data/med-hudh/report/rf_aa_rv.csv')
     df_para.to_csv('/data/med-hudh/para/rf_aa_rv.csv')
