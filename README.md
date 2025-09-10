@@ -41,9 +41,9 @@ UKB_code/
 
 ## Prerequisites 
 - Python 3.9.12
-- Required libraries: pandas, numpy, scipy, etc.
-- Access to UK Biobank data through UKB RAP
 - All necessary Python libraries (e.g., pandas, numpy, scipy) are listed in the requirements.txt 
+- Access to UK Biobank data through UKB RAP
+
 
 ## Installation
 
