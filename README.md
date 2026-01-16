@@ -87,6 +87,7 @@ C) Association Tests
     ./association_tests/burden/burden.sh
 
 D) Model Training and Testing
+
     python run_train.py --param_id 1 --pheno_symbol st --variant cv --strategy early --model lasso --output_dir ./results --data_dir ./data
   
 ## License
