@@ -9,34 +9,39 @@ This repo consists of scripts to:
 
 ## Repository Structure 
 ```text
-UKB_code/
-├─ LICENSE
-├─ README.md
-├─ requirements.txt
-├─ association_tests/
-│ ├─ burden/
-│ │ ├─ burden.sh
-│ └─ gwas/
-│ ├─ gwas.sh
-│ └─ clumping.sh
-├─ extracting_genotype/
-│ ├─ extract_cv.py
-│ └─ extract_rv.py
-├─ integration_comparison/
-│ └─ late_integration.py
-├─ phenotype_extraction/
-│ └─ continuous_phenotype.ipynb
-└─ variant_comparison/
-├─ lasso_aa_cv.py
-├─ lasso_aa_rv.py
-├─ ridge_aa_cv.py
-├─ ridge_aa_rv.py
-├─ ols_aa_cv.py
-├─ ols_aa_rv.py
-├─ rf_aa_cv.py
-├─ rf_aa_rv.py
-├─ xgb_aa_cv.py
-└─ xgb_aa_rv.py
+UKB_code
+├── LICENSE
+├── README.md
+├── association_tests
+│   ├── burden
+│   │   └── burden.sh
+│   └── gwas
+│       ├── clumping.sh
+│       └── gwas.sh
+├── extracting_genotype
+│   ├── extract_cv.py
+│   └── extract_rv.py
+├── model_train
+│   ├── model.py
+│   ├── run_prs.py
+│   └── settle_data.py
+├── model_train_old
+│   ├── integration_comparison
+│   │   └── late_integration.py
+│   └── variant_comparison
+│       ├── lasso_aa_cv.py
+│       ├── lasso_aa_rv.py
+│       ├── ols_aa_cv.py
+│       ├── ols_aa_rv.py
+│       ├── rf_aa_cv.py
+│       ├── rf_aa_rv.py
+│       ├── ridge_aa_cv.py
+│       ├── ridge_aa_rv.py
+│       ├── xgb_aa_cv.py
+│       └── xgb_aa_rv.py
+├── phenotype_extraction
+│   └── continuous_phenotype.ipynb
+└── requirements.txt
 ```
 
 ## Prerequisites 
@@ -81,20 +86,8 @@ C) Association Tests
 
     ./association_tests/burden/burden.sh
 
-D) Late Integration (CV + RV)
-
-    python integration_comparison/late_integration.py
-
-E) Variant-set Model Comparison
-
-  Compare common variants (CV) vs rare variants (RV) using:
-  
-  Lasso:
-      
-      python variant_comparison/lasso_aa_cv.py
-      python variant_comparison/lasso_aa_rv.py
-
-  Similarly there are python scripts for Ridge, OLS, Random Forest and XGBoost
+D) Model Training and Testing
+    python run_train.py --param_id 1 --pheno_symbol st --variant cv --strategy early --model lasso --output_dir ./results --data_dir ./data
   
 ## License
 
