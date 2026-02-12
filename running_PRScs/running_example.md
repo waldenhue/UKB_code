@@ -81,6 +81,66 @@ Upload to `./prscs_tt/ `:
 put ./tmp/gwas_formatted_st.tsv ./prscs_tt/gwas_formatted/
 ```
 
+Match the SNPs:
+
+```bash
+awk '
+BEGIN{
+  FS=OFS="\t"
+  comp["A"]="T"; comp["T"]="A"; comp["C"]="G"; comp["G"]="C"
+  flip=0
+}
+function is_amb(a,b){
+  return ( (a=="A"&&b=="T")||(a=="T"&&b=="A")||(a=="C"&&b=="G")||(a=="G"&&b=="C") )
+}
+
+NR==FNR{
+  if(FNR==1) next
+  a1[$2]=$4; a2[$2]=$5
+  next
+}
+
+FNR==1{print; next}
+
+{
+  snp=$1; A1=$2; A2=$3; beta=$4; se=$5
+  if(!(snp in a1)) next
+
+  r1=a1[snp]; r2=a2[snp]
+
+  # drop ambiguous SNPs
+  if(is_amb(r1,r2)) next
+
+  # same strand, same order
+  if(A1==r1 && A2==r2){
+    print snp, A1, A2, beta, se
+
+  # same strand, flipped
+  } else if(A1==r2 && A2==r1){
+    flip++
+    print snp, r1, r2, -beta, se
+
+  } else {
+    # try complement
+    c1=comp[A1]; c2=comp[A2]
+
+    if(c1==r1 && c2==r2){
+      print snp, r1, r2, beta, se
+
+    } else if(c1==r2 && c2==r1){
+      flip++
+      print snp, r1, r2, -beta, se
+    }
+  }
+}
+
+END{
+  print "Flipped SNPs:", flip > "/dev/stderr"
+}
+' ldblk_ukbb_eur/snpinfo_ukbb_hm3 gwas_formatted_st.tsv \
+> gwas_formatted_st.aligned.tsv
+```
+
 ## 2) Beta adjustment with PRScs
 
 Run `prscs_adjust_beta.lsf` in `./prscs_tt/`.
@@ -111,7 +171,7 @@ CHROM=$LSB_JOBINDEX
 
 REF_DIR="./ldblk_ukbb_eur"
 BIM_PREFIX="./merged_data"
-SST_FILE="./prscs_tt/gwas_formatted_st.tsv"
+SST_FILE="./prscs_tt/gwas_formatted_st.aligned.tsv"
 N_GWAS=97843  # N = 97843 for st
 OUT_DIR="./prscs_tt/adjust_beta_results/"
 
